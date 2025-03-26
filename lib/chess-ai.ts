@@ -1,16 +1,33 @@
-import { generateText } from "ai";
+import { generateObject, generateText } from "ai";
 import { createOpenAI, openai } from "@ai-sdk/openai";
 import { Chess } from "chess.js";
 import { z } from "zod";
 
 // Define the schema for the AI's move response
 const moveResponseSchema = z.object({
-  move: z.object({
-    from: z.string(),
-    to: z.string(),
-    promotion: z.string().optional()
-  }),
-  reasoning: z.string()
+  move: z
+    .object({
+      from: z
+        .string()
+        .describe(
+          "The starting square of the move in algebraic notation (e.g., 'e2')"
+        ),
+      to: z
+        .string()
+        .describe(
+          "The destination square of the move in algebraic notation (e.g., 'e4')"
+        ),
+      promotion: z
+        .string()
+        .optional()
+        .describe(
+          "The piece type to promote to if this is a pawn promotion move (e.g., 'q' for queen)"
+        )
+    })
+    .describe("The chess move details in algebraic notation"),
+  reasoning: z
+    .string()
+    .describe("The AI's explanation of why it chose this particular move")
 });
 
 export async function generateMove(
@@ -158,14 +175,15 @@ Return your response in the following JSON format only:
   "reasoning": "Brief explanation of why you chose this move"
 }`;
     const openai = createOpenAI({ apiKey });
-    const { text } = await generateText({
+    const { object } = await generateObject({
       model: openai(modelName),
       prompt,
-      temperature: 0.5
+      temperature: 0.5,
+      schema: moveResponseSchema
     });
 
     // Parse and validate the response using Zod
-    const parsedResponse = moveResponseSchema.parse(JSON.parse(text));
+    const parsedResponse = moveResponseSchema.parse(object);
 
     // Execute the move on our chess instance
     const result = chess.move({
